@@ -1,5 +1,5 @@
 [package]
-name = "mal-rust"
+name = "mal_rust"
 version = "0.1.0"
 authors = ["Tyler Goodwin"]
 edition = "2018"
@@ -7,7 +7,12 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+regex = "1.3.1"
 
 [[bin]]
 name = "step0_repl"
 path = "src/bin/step0_repl.rs"
+
+[[bin]]
+name = "step1_read_print"
+path = "src/bin/step1_read_print.rs"

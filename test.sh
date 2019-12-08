@@ -7,4 +7,4 @@ if [[ -z "$1" ]]; then
   exit 1
 fi
 
-./mal/runtest.py --rundir $(pwd) "./mal/tests/$1.mal" cargo run $1
+./mal/runtest.py --rundir $(pwd) "./mal/tests/$1.mal" ./run.sh $1
