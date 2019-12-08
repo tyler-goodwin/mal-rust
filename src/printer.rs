@@ -12,6 +12,7 @@ pub fn print_str(input: &MalType) -> String {
     MalType::Number(num) => num.to_string(),
     MalType::Symbol(sym) => sym.to_string(),
     MalType::String(s) => print_string(s),
+    MalType::Keyword(s) => String::from(":") + s,
     MalType::List(list) => print_list_like(list, "(", ")"),
     MalType::Vector(list) => print_list_like(list, "[", "]"),
     MalType::HashMap(list) => print_list_like(list, "{", "}"),

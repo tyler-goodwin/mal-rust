@@ -63,6 +63,7 @@ fn read_form(reader: &mut Reader) -> MalResult {
         '[' => read_vector(reader),
         '{' => read_hashmap(reader),
         '"' => read_string(reader),
+        ':' => read_keyword(reader),
         '^' => read_with_meta(reader),
         '\'' => read_quote(reader, "quote"),
         '`' => read_quote(reader, "quasiquote"),
@@ -86,15 +87,17 @@ fn read_form(reader: &mut Reader) -> MalResult {
 }
 
 fn read_atom(reader: &mut Reader) -> MalResult {
-  let token = match reader.next() {
-    Some(t) => t,
-    None => return Err(MalError::unexpected_eof()),
-  };
+  let token = reader.next().unwrap();
   let pattern = Regex::new(NUMBER_PATTERN).unwrap();
   let value = if pattern.is_match(&token) {
     MalType::Number(token.parse::<i64>().unwrap_or(0))
   } else {
-    MalType::Symbol(token)
+    match token.as_ref() {
+      "nil" => MalType::Nil,
+      "true" => MalType::True,
+      "false" => MalType::False,
+      _ => MalType::Symbol(token),
+    }
   };
   Ok(value)
 }
@@ -160,6 +163,11 @@ fn unescape_char(input: Option<char>) -> Result<char, MalError> {
     Some(c) => Ok(c),
     None => Err(MalError::unexpected_eof()),
   }
+}
+
+fn read_keyword(reader: &mut Reader) -> MalResult {
+  let token = reader.next().unwrap();
+  Ok(MalType::Keyword(token[1..].to_string()))
 }
 
 fn read_quote(reader: &mut Reader, label: &str) -> MalResult {

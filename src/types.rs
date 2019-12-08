@@ -1,5 +1,20 @@
 use std::{error, fmt};
 
+pub enum MalType {
+  Nil,
+  True,
+  False,
+  Symbol(String),
+  Number(i64),
+  String(String),
+  Keyword(String),
+  List(Vec<MalType>),
+  Vector(Vec<MalType>),
+  HashMap(Vec<MalType>),
+}
+
+pub type MalResult = Result<MalType, MalError>;
+
 #[derive(Debug, Clone, Copy)]
 pub enum MalErrorReason {
   Unknown,
@@ -68,17 +83,3 @@ impl error::Error for MalError {
     None
   }
 }
-
-pub enum MalType {
-  Nil,
-  True,
-  False,
-  Symbol(String),
-  Number(i64),
-  String(String),
-  List(Vec<MalType>),
-  Vector(Vec<MalType>),
-  HashMap(Vec<MalType>),
-}
-
-pub type MalResult = Result<MalType, MalError>;
