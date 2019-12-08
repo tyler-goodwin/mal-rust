@@ -1,10 +1,11 @@
 use std::{error, fmt};
 
-#[derive(Debug, Clone)]
-enum MalErrorReason {
+#[derive(Debug, Clone, Copy)]
+pub enum MalErrorReason {
   Unknown,
   UnexpectedEOF,
   UnexpectedEndOfString,
+  BlankLine,
 }
 
 impl fmt::Display for MalErrorReason {
@@ -15,6 +16,7 @@ impl fmt::Display for MalErrorReason {
       MalErrorReason::UnexpectedEndOfString => {
         "Unexpected end of string. Possibly unbalanced quotes"
       }
+      MalErrorReason::BlankLine => "",
     };
     write!(f, "{}", reason)
   }
@@ -42,6 +44,16 @@ impl MalError {
     MalError {
       reason: MalErrorReason::UnexpectedEndOfString,
     }
+  }
+
+  pub fn blank_line() -> MalError {
+    MalError {
+      reason: MalErrorReason::BlankLine,
+    }
+  }
+
+  pub fn reason(&self) -> MalErrorReason {
+    self.reason
   }
 }
 

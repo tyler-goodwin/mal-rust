@@ -1,4 +1,3 @@
-use std::error::Error;
 use std::io::{self, Write};
 
 use mal_rust::types::*;
@@ -14,12 +13,14 @@ enum RepResult {
   Done,
 }
 
-fn read() -> Result<ReadResult, Box<dyn Error>> {
+fn read() -> Result<ReadResult, MalError> {
   let mut input = String::new();
   print!("user> ");
-  io::stdout().flush()?;
+  io::stdout().flush().expect("Could not flush stdout");
 
-  let bytes = io::stdin().read_line(&mut input)?;
+  let bytes = io::stdin()
+    .read_line(&mut input)
+    .expect("Could not read from stdin");
   let out = if bytes != 0 {
     ReadResult::InputRecv(reader::read_str(String::from(input.trim()))?)
   } else {
@@ -38,7 +39,7 @@ fn print(output: MalType) {
   io::stdout().flush().unwrap();
 }
 
-fn rep() -> Result<RepResult, Box<dyn Error>> {
+fn rep() -> Result<RepResult, MalError> {
   match read()? {
     ReadResult::InputRecv(input) => {
       print(eval(input)?);
@@ -53,7 +54,10 @@ fn main() {
     match rep() {
       Ok(RepResult::Continue) => (),
       Ok(RepResult::Done) => break,
-      Err(e) => eprintln!("Error: {}", e),
+      Err(e) => match e.reason() {
+        MalErrorReason::BlankLine => (),
+        _ => eprintln!("{}", e),
+      },
     }
   }
   println!();

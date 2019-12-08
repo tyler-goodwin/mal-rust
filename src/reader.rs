@@ -74,13 +74,14 @@ fn read_form(reader: &mut Reader) -> MalResult {
             read_quote(reader, "unquote")
           }
         }
+        ';' => return Err(MalError::blank_line()),
         _ => read_atom(reader),
       }
     } else {
-      Err(MalError::unexpected_eof())
+      Err(MalError::blank_line())
     }
   } else {
-    Err(MalError::unknown())
+    Err(MalError::blank_line())
   }
 }
 
