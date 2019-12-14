@@ -16,6 +16,7 @@ pub fn print_str(input: &MalType) -> String {
     MalType::List(list) => print_list_like(list, "(", ")"),
     MalType::Vector(list) => print_list_like(list, "[", "]"),
     MalType::HashMap(list) => print_list_like(list, "{", "}"),
+    MalType::Function(_) => String::from("#<function>"),
   }
 }
 
