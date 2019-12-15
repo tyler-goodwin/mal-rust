@@ -52,6 +52,7 @@ pub enum MalErrorReason {
   UnexpectedEndOfString,
   SymbolNotFound(String),
   NotAFunction,
+  NotANumber,
   BlankLine,
 }
 
@@ -65,6 +66,7 @@ impl fmt::Display for MalErrorReason {
       }
       MalErrorReason::SymbolNotFound(sym) => format!("Could not find symbol '{}'", sym),
       MalErrorReason::NotAFunction => "Expected function".to_string(),
+      MalErrorReason::NotANumber => "Expected number".to_string(),
       MalErrorReason::BlankLine => "".to_string(),
     };
     write!(f, "{}", reason)
@@ -104,6 +106,12 @@ impl MalError {
   pub fn not_a_function() -> MalError {
     MalError {
       reason: MalErrorReason::NotAFunction,
+    }
+  }
+
+  pub fn not_a_number() -> MalError {
+    MalError {
+      reason: MalErrorReason::NotANumber,
     }
   }
 

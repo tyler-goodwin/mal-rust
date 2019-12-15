@@ -41,6 +41,18 @@ fn lookup(env: &ReplEnv, sym: &str) -> Result<MalType, MalError> {
   }
 }
 
+fn eval_hash_map(list: Vec<MalType>, env: &mut ReplEnv) -> Result<Vec<MalType>, MalError> {
+  let mut new_list = Vec::new();
+  for (i, item) in list.iter().enumerate() {
+    if i % 2 != 0 {
+      new_list.push(eval(item.to_owned(), env)?);
+    } else {
+      new_list.push(item.to_owned());
+    }
+  }
+  Ok(new_list)
+}
+
 fn eval_ast(input: MalType, env: &mut ReplEnv) -> Result<MalType, MalError> {
   let mut eval_list = |list: Vec<MalType>| -> Result<Vec<MalType>, MalError> {
     list.into_iter().map(|v| eval(v.clone(), env)).collect()
@@ -49,7 +61,7 @@ fn eval_ast(input: MalType, env: &mut ReplEnv) -> Result<MalType, MalError> {
     MalType::Symbol(sym) => lookup(env, &sym)?,
     MalType::List(list) => MalType::List(eval_list(list)?),
     MalType::Vector(list) => MalType::Vector(eval_list(list)?),
-    MalType::HashMap(list) => MalType::HashMap(eval_list(list)?),
+    MalType::HashMap(list) => MalType::HashMap(eval_hash_map(list, env)?),
     _ => input,
   };
   Ok(value)

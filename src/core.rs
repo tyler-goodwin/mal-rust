@@ -6,7 +6,7 @@ fn to_numbers(args: &mut Vec<MalType>) -> Result<Vec<i64>, MalError> {
     if let Some(val) = i.number_value() {
       results.push(val);
     } else {
-      return Err(MalError::unknown());
+      return Err(MalError::not_a_number());
     }
   }
   Ok(results)
