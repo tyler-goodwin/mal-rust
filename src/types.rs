@@ -1,6 +1,6 @@
 use std::{error, fmt};
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub enum MalType {
   Nil,
   True,
@@ -36,11 +36,24 @@ impl MalType {
       _ => None,
     }
   }
+
+  pub fn symbol_value(&self) -> Option<String> {
+    match self {
+      MalType::Symbol(s) => Some(s.to_owned()),
+      _ => None,
+    }
+  }
 }
 
 #[derive(Clone)]
 pub struct MalFunc {
   pub func: fn(&mut Vec<MalType>) -> MalResult,
+}
+
+impl fmt::Debug for MalFunc {
+  fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    write!(f, "#<function>")
+  }
 }
 
 pub type MalResult = Result<MalType, MalError>;
@@ -53,6 +66,7 @@ pub enum MalErrorReason {
   SymbolNotFound(String),
   NotAFunction,
   NotANumber,
+  WrongArguments(String),
   BlankLine,
 }
 
@@ -64,9 +78,10 @@ impl fmt::Display for MalErrorReason {
       MalErrorReason::UnexpectedEndOfString => {
         "Unexpected end of string. Possibly unbalanced quotes".to_string()
       }
-      MalErrorReason::SymbolNotFound(sym) => format!("Could not find symbol '{}'", sym),
+      MalErrorReason::SymbolNotFound(sym) => format!("Symbol '{}' not found", sym),
       MalErrorReason::NotAFunction => "Expected function".to_string(),
       MalErrorReason::NotANumber => "Expected number".to_string(),
+      MalErrorReason::WrongArguments(reason) => format!("Wrong arguements - {}", reason),
       MalErrorReason::BlankLine => "".to_string(),
     };
     write!(f, "{}", reason)
@@ -112,6 +127,12 @@ impl MalError {
   pub fn not_a_number() -> MalError {
     MalError {
       reason: MalErrorReason::NotANumber,
+    }
+  }
+
+  pub fn wrong_arguments(reason: String) -> MalError {
+    MalError {
+      reason: MalErrorReason::WrongArguments(reason),
     }
   }
 
