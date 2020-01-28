@@ -1,0 +1,1 @@
+Everything in this folder taken from: https://github.com/kanaka/mal.git
