@@ -61,11 +61,7 @@ fn let_star(env: &mut Env, list: &mut Vec<MalType>) -> MalResult {
   list.remove(0); // Remove "let*"
   let mut bindings = match list.remove(0) {
     MalType::List(list) | MalType::Vector(list) => list,
-    _ => {
-      return Err(MalError::wrong_arguments(
-        "Expected list or vector".to_string(),
-      ))
-    }
+    _ => return Err(MalError::wrong_arguments("Expected list or vector")),
   };
 
   if bindings.len() % 2 != 0 {
@@ -78,7 +74,7 @@ fn let_star(env: &mut Env, list: &mut Vec<MalType>) -> MalResult {
     }
     let symbol = match bindings.remove(0) {
       MalType::Symbol(sym) => sym,
-      _ => return Err(MalError::wrong_arguments("Expected symbol".to_string())),
+      _ => return Err(MalError::wrong_arguments("Expected symbol")),
     };
 
     let value = eval(bindings.remove(0), &mut new_env)?;
@@ -134,7 +130,7 @@ fn eval(input: MalType, env: &mut Env) -> Result<MalType, MalError> {
 }
 
 fn print(output: MalType) {
-  let out = printer::print_str(&output);
+  let out = printer::print_str(&output, true);
   println!("{}", out);
   io::stdout().flush().unwrap();
 }

@@ -37,7 +37,7 @@ fn lookup(env: &ReplEnv, sym: &str) -> Result<MalType, MalError> {
   if let Some(value) = env.get(sym) {
     Ok(value.to_owned())
   } else {
-    Err(MalError::symbol_not_found(sym.to_string()))
+    Err(MalError::symbol_not_found(sym))
   }
 }
 
@@ -89,7 +89,7 @@ fn eval(input: MalType, env: &mut ReplEnv) -> Result<MalType, MalError> {
 }
 
 fn print(output: MalType) {
-  let out = printer::print_str(&output);
+  let out = printer::print_str(&output, true);
   println!("{}", out);
   io::stdout().flush().unwrap();
 }

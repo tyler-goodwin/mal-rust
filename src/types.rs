@@ -1,5 +1,7 @@
 use std::{error, fmt};
 
+use crate::env::*;
+
 #[derive(Debug, Clone)]
 pub enum MalType {
   Nil,
@@ -13,6 +15,7 @@ pub enum MalType {
   Vector(Vec<MalType>),
   HashMap(Vec<MalType>),
   Function(MalFunc),
+  Lambda(MalLambda),
 }
 
 impl MalType {
@@ -23,9 +26,39 @@ impl MalType {
     }
   }
 
+  pub fn is_list_or_vector(&self) -> bool {
+    match self {
+      MalType::List(_) => true,
+      MalType::Vector(_) => true,
+      _ => false,
+    }
+  }
+  pub fn is_map(&self) -> bool {
+    match self {
+      MalType::HashMap(_) => true,
+      _ => false,
+    }
+  }
+
+  pub fn is_truthy(&self) -> bool {
+    match self {
+      MalType::False => false,
+      MalType::Nil => false,
+      _ => true,
+    }
+  }
+
+  pub fn is_nil(&self) -> bool {
+    match self {
+      MalType::Nil => true,
+      _ => false,
+    }
+  }
+
   pub fn list_value(&self) -> Option<Vec<MalType>> {
     match self {
       MalType::List(list) => Some(list.to_owned()),
+      MalType::Vector(list) => Some(list.to_owned()),
       _ => None,
     }
   }
@@ -43,14 +76,37 @@ impl MalType {
       _ => None,
     }
   }
+
+  pub fn to_bool(val: bool) -> MalType {
+    if val {
+      MalType::True
+    } else {
+      MalType::False
+    }
+  }
 }
+
+pub type CoreFunction = fn(&mut Vec<MalType>) -> MalResult;
 
 #[derive(Clone)]
 pub struct MalFunc {
-  pub func: fn(&mut Vec<MalType>) -> MalResult,
+  pub func: CoreFunction,
+}
+
+#[derive(Clone)]
+pub struct MalLambda {
+  pub env: Env,
+  pub args: Vec<MalType>,
+  pub body: Vec<MalType>,
 }
 
 impl fmt::Debug for MalFunc {
+  fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    write!(f, "#<function>")
+  }
+}
+
+impl fmt::Debug for MalLambda {
   fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
     write!(f, "#<function>")
   }
@@ -68,6 +124,7 @@ pub enum MalErrorReason {
   NotANumber,
   WrongArguments(String),
   BlankLine,
+  Generic(String),
 }
 
 impl fmt::Display for MalErrorReason {
@@ -81,8 +138,9 @@ impl fmt::Display for MalErrorReason {
       MalErrorReason::SymbolNotFound(sym) => format!("Symbol '{}' not found", sym),
       MalErrorReason::NotAFunction => "Expected function".to_string(),
       MalErrorReason::NotANumber => "Expected number".to_string(),
-      MalErrorReason::WrongArguments(reason) => format!("Wrong arguements - {}", reason),
+      MalErrorReason::WrongArguments(reason) => format!("Wrong arguments - {}", reason),
       MalErrorReason::BlankLine => "".to_string(),
+      MalErrorReason::Generic(reason) => reason.to_string(),
     };
     write!(f, "{}", reason)
   }
@@ -112,9 +170,9 @@ impl MalError {
     }
   }
 
-  pub fn symbol_not_found(sym: String) -> MalError {
+  pub fn symbol_not_found(sym: &str) -> MalError {
     MalError {
-      reason: MalErrorReason::SymbolNotFound(sym),
+      reason: MalErrorReason::SymbolNotFound(sym.to_string()),
     }
   }
 
@@ -130,15 +188,21 @@ impl MalError {
     }
   }
 
-  pub fn wrong_arguments(reason: String) -> MalError {
+  pub fn wrong_arguments(reason: &str) -> MalError {
     MalError {
-      reason: MalErrorReason::WrongArguments(reason),
+      reason: MalErrorReason::WrongArguments(reason.to_string()),
     }
   }
 
   pub fn blank_line() -> MalError {
     MalError {
       reason: MalErrorReason::BlankLine,
+    }
+  }
+
+  pub fn generic(reason: &str) -> MalError {
+    MalError {
+      reason: MalErrorReason::Generic(reason.to_string()),
     }
   }
 

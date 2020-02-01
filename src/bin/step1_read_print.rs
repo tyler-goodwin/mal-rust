@@ -34,7 +34,7 @@ fn eval(input: MalType) -> Result<MalType, MalError> {
 }
 
 fn print(output: MalType) {
-  let out = printer::print_str(&output);
+  let out = printer::print_str(&output, true);
   println!("{}", out);
   io::stdout().flush().unwrap();
 }
