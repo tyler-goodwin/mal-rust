@@ -166,6 +166,8 @@ fn eval(input: MalType, env: &mut Env) -> MalResult {
   if !input.is_list() {
     // println!("EVAL NOT LIST");
     eval_ast(input, env)
+  } else if input.list_value().unwrap().len() == 0 {
+    Ok(input)
   } else if is_special_form(&input) {
     // println!("EVAL Special Form");
     if let Some(mut list) = input.list_value() {
