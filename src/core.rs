@@ -3,28 +3,44 @@ use crate::types::*;
 use std::collections::HashMap;
 use std::convert::TryInto;
 
+macro_rules! gen_map_functions {
+  ($( $sym:expr => $func:ident ),*) => {
+    {
+      let mut map = HashMap::new();
+      $(
+        map.insert($sym, $func as CoreFunction);
+      )*
+      map
+    }
+  };
+}
+
 lazy_static! {
   pub static ref CORE_FUNCTIONS: HashMap<&'static str, CoreFunction> = {
-    let mut map = HashMap::new();
-    map.insert("+", plus as CoreFunction);
-    map.insert("-", minus as CoreFunction);
-    map.insert("*", multiply as CoreFunction);
-    map.insert("/", divide as CoreFunction);
-    map.insert("list", list as CoreFunction);
-    map.insert("list?", is_list as CoreFunction);
-    map.insert("empty?", is_empty as CoreFunction);
-    map.insert("count", count as CoreFunction);
-    map.insert("=", equal as CoreFunction);
-    map.insert("<", less_than as CoreFunction);
-    map.insert("<=", less_than_or_eq as CoreFunction);
-    map.insert(">", greater_than as CoreFunction);
-    map.insert(">=", greater_than_or_eq as CoreFunction);
-    map.insert("prn", prn as CoreFunction);
-    map.insert("println", println as CoreFunction);
-    map.insert("pr-str", pr_str as CoreFunction);
-    map.insert("str", str as CoreFunction);
-    map
+    gen_map_functions! {
+      "+" => plus,
+      "-" => minus,
+      "*" => multiply,
+      "/" => divide,
+      "list" => list,
+      "list?" => is_list,
+      "empty?" => is_empty,
+      "count" => count,
+      "=" => equal,
+      "<" => less_than,
+      "<=" => less_than_or_eq,
+      ">" => greater_than,
+      ">=" => greater_than_or_eq,
+      "prn" => prn,
+      "println" => println,
+      "pr-str" => pr_str,
+      "str" => str
+    }
   };
+}
+
+pub fn get_core_functions() -> HashMap<&'static str, CoreFunction> {
+  HashMap::new()
 }
 
 pub fn plus(args: &mut Vec<MalType>) -> MalResult {
