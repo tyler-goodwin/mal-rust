@@ -7,4 +7,13 @@ if [[ -z "$1" ]]; then
   exit 1
 fi
 
-./mal/runtest.py --rundir $(pwd) "./mal/tests/$1.mal" ./run.sh $1
+TEST="$1"
+if [[ -z "$2" ]]; then
+  BIN=$TEST
+else
+  BIN="$2"
+fi
+
+
+./mal/runtest.py --rundir $(pwd) "./mal/tests/$TEST.mal" ./run.sh $BIN
+echo "Ran test suite for $TEST against $BIN binary"
