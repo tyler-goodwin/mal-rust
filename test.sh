@@ -14,6 +14,5 @@ else
   BIN="$2"
 fi
 
-
 ./mal/runtest.py --rundir $(pwd) "./mal/tests/$TEST.mal" ./run.sh $BIN
 echo "Ran test suite for $TEST against $BIN binary"

@@ -190,7 +190,7 @@ fn eval(input: MalType, env: &mut Env) -> MalResult {
     // Must be a function or lambda call
     let mut list = eval_ast(input, env)?.list_value().unwrap();
     match list.remove(0) {
-      MalType::Function(MalFunc { func, .. }) => func(&mut list),
+      MalType::Function(MalFunc { func, env, .. }) => func(&mut list, env),
       MalType::Lambda(MalLambda {
         env, args, body, ..
       }) => {
@@ -237,7 +237,13 @@ fn main() {
   let mut env = Env::new(None);
   // Add native lib functions
   for (sym, func) in &*core::CORE_FUNCTIONS {
-    env.set(sym, MalType::Function(MalFunc { func: *func }))
+    env.set(
+      sym,
+      MalType::Function(MalFunc {
+        func: *func,
+        env: None,
+      }),
+    )
   }
   // Eval stdlib mal functions
   let ast = reader::read_str(String::from("(def! not (fn* (a) (if a false true)))")).unwrap();

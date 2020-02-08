@@ -116,7 +116,7 @@ fn eval(input: MalType, env: &mut Env) -> Result<MalType, MalError> {
         _ => {
           let mut list = eval_ast(input, env)?.list_value().unwrap();
           match list.remove(0) {
-            MalType::Function(malfunc) => (malfunc.func)(&mut list)?,
+            MalType::Function(malfunc) => (malfunc.func)(&mut list, malfunc.env)?,
             _ => return Err(MalError::not_a_function()),
           }
         }
@@ -147,13 +147,32 @@ fn rep(env: &mut Env) -> Result<RepResult, MalError> {
 
 fn main() {
   let mut env = Env::new(None);
-  env.set("+", MalType::Function(MalFunc { func: core::plus }));
-  env.set("-", MalType::Function(MalFunc { func: core::minus }));
-  env.set("/", MalType::Function(MalFunc { func: core::divide }));
+  env.set(
+    "+",
+    MalType::Function(MalFunc {
+      func: core::plus,
+      env: None,
+    }),
+  );
+  env.set(
+    "-",
+    MalType::Function(MalFunc {
+      func: core::minus,
+      env: None,
+    }),
+  );
+  env.set(
+    "/",
+    MalType::Function(MalFunc {
+      func: core::divide,
+      env: None,
+    }),
+  );
   env.set(
     "*",
     MalType::Function(MalFunc {
       func: core::multiply,
+      env: None,
     }),
   );
 

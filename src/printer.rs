@@ -23,7 +23,10 @@ pub fn print_str(input: &MalType, print_readably: bool) -> String {
     MalType::Vector(list) => print_list_like(list, "[", "]", print_readably),
     MalType::HashMap(list) => print_list_like(list, "{", "}", print_readably),
     MalType::Function(_) => String::from("#<function>"),
-    MalType::Lambda(_) => String::from("#<lambda>"), // TODO: Change back to function
+    MalType::Lambda(_) => String::from("#<function>"),
+    MalType::Atom(atom) => {
+      format!("(atom {})", print_str(&atom.borrow(), print_readably)).to_string()
+    }
   }
 }
 

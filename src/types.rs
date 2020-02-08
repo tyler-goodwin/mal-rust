@@ -1,5 +1,8 @@
+use std::cell::RefCell;
+use std::rc::Rc;
 use std::{error, fmt};
 
+use crate::core::eval_func;
 use crate::env::*;
 
 #[derive(Debug, Clone)]
@@ -16,9 +19,26 @@ pub enum MalType {
   HashMap(Vec<MalType>),
   Function(MalFunc),
   Lambda(MalLambda),
+  Atom(Rc<RefCell<MalType>>),
 }
 
 impl MalType {
+  pub fn atom(value: MalType) -> MalType {
+    MalType::Atom(Rc::new(RefCell::new(value)))
+  }
+
+  pub fn swap(&mut self, func: MalType, args: &mut Vec<MalType>) -> MalResult {
+    match self {
+      MalType::Atom(ref atom) => {
+        args.insert(0, atom.borrow().to_owned());
+        let result = eval_func(func, args)?;
+        atom.replace(result.clone());
+        Ok(result)
+      }
+      _ => return Err(MalError::wrong_arguments("Not an atom")),
+    }
+  }
+
   pub fn is_list(&self) -> bool {
     match self {
       MalType::List(_) => true,
@@ -55,6 +75,13 @@ impl MalType {
     }
   }
 
+  pub fn is_atom(&self) -> bool {
+    match self {
+      MalType::Atom(_) => true,
+      _ => false,
+    }
+  }
+
   pub fn list_value(&self) -> Option<Vec<MalType>> {
     match self {
       MalType::List(list) => Some(list.to_owned()),
@@ -77,6 +104,20 @@ impl MalType {
     }
   }
 
+  pub fn string_value(&self) -> Option<String> {
+    match self {
+      MalType::String(s) => Some(s.to_owned()),
+      _ => None,
+    }
+  }
+
+  pub fn function_value(&self) -> Option<MalFunc> {
+    match self {
+      MalType::Function(func) => Some(func.to_owned()),
+      _ => None,
+    }
+  }
+
   pub fn to_bool(val: bool) -> MalType {
     if val {
       MalType::True
@@ -86,11 +127,12 @@ impl MalType {
   }
 }
 
-pub type CoreFunction = fn(&mut Vec<MalType>) -> MalResult;
+pub type CoreFunction = fn(&mut Vec<MalType>, Option<Env>) -> MalResult;
 
 #[derive(Clone)]
 pub struct MalFunc {
   pub func: CoreFunction,
+  pub env: Option<Env>,
 }
 
 #[derive(Clone)]

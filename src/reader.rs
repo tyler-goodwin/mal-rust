@@ -5,7 +5,7 @@ use regex::Regex;
 use crate::types::*;
 
 const TOKEN_PATTERN: &str =
-  r#"[\s,]*(~@|[\[\]{}()'`~^@]|"(?:\\.|[^\\"])*"?|;.*|[^\s\[\]{}('"`,;)]*)"#;
+  r#"[\s,]*(~@|[\[\]{}()'`~^@]|"(?:\\.|[^\\"])*"|;.*|[^\s\[\]{}('"`,;)]*)"#;
 const NUMBER_PATTERN: &str = r#"^\-?[\d\.]+$"#;
 
 pub fn read_str(input: String) -> MalResult {
@@ -49,6 +49,9 @@ fn tokenize(input: String) -> Vec<String> {
   let pattern = Regex::new(TOKEN_PATTERN).unwrap();
   let mut tokens = vec![];
   for capture in pattern.captures_iter(&input) {
+    if capture[1].starts_with(";") {
+      continue;
+    }
     tokens.push(capture[1].to_string());
   }
   tokens
@@ -56,6 +59,7 @@ fn tokenize(input: String) -> Vec<String> {
 
 fn read_form(reader: &mut Reader) -> MalResult {
   if let Some(token) = reader.peek() {
+    // println!("Read Form token: {}", token);
     let mut chars = token.chars();
     if let Some(c) = chars.next() {
       match c {
@@ -75,7 +79,10 @@ fn read_form(reader: &mut Reader) -> MalResult {
             read_quote(reader, "unquote")
           }
         }
-        ';' => return Err(MalError::blank_line()),
+        ';' => {
+          reader.next();
+          return Err(MalError::blank_line());
+        }
         _ => read_atom(reader),
       }
     } else {

@@ -1,9 +1,12 @@
+use crate::env::Env;
 use crate::printer;
+use crate::reader;
 use crate::types::*;
 use std::collections::HashMap;
 use std::convert::TryInto;
+use std::fs;
 
-macro_rules! gen_map_functions {
+macro_rules! gen_functions_map {
   ($( $sym:expr => $func:ident ),*) => {
     {
       let mut map = HashMap::new();
@@ -17,7 +20,7 @@ macro_rules! gen_map_functions {
 
 lazy_static! {
   pub static ref CORE_FUNCTIONS: HashMap<&'static str, CoreFunction> = {
-    gen_map_functions! {
+    gen_functions_map! {
       "+" => plus,
       "-" => minus,
       "*" => multiply,
@@ -34,21 +37,24 @@ lazy_static! {
       "prn" => prn,
       "println" => println,
       "pr-str" => pr_str,
-      "str" => str
+      "str" => str,
+      "read-string" => read_string,
+      "slurp" => slurp,
+      "atom" => atom,
+      "atom?" => is_atom,
+      "deref" => deref,
+      "reset!" => reset,
+      "swap!" => swap
     }
   };
 }
 
-pub fn get_core_functions() -> HashMap<&'static str, CoreFunction> {
-  HashMap::new()
-}
-
-pub fn plus(args: &mut Vec<MalType>) -> MalResult {
+pub fn plus(args: &mut Vec<MalType>, _env: Option<Env>) -> MalResult {
   let result = to_numbers(args)?.iter().fold(0, |acc, x| acc + x);
   Ok(MalType::Number(result))
 }
 
-pub fn minus(args: &mut Vec<MalType>) -> MalResult {
+pub fn minus(args: &mut Vec<MalType>, _env: Option<Env>) -> MalResult {
   let mut args = to_numbers(args)?;
   let mut result = args.remove(0);
   for i in args {
@@ -57,12 +63,12 @@ pub fn minus(args: &mut Vec<MalType>) -> MalResult {
   Ok(MalType::Number(result))
 }
 
-pub fn multiply(args: &mut Vec<MalType>) -> MalResult {
+pub fn multiply(args: &mut Vec<MalType>, _env: Option<Env>) -> MalResult {
   let result = to_numbers(args)?.iter().fold(1, |acc, x| acc * x);
   Ok(MalType::Number(result))
 }
 
-pub fn divide(args: &mut Vec<MalType>) -> MalResult {
+pub fn divide(args: &mut Vec<MalType>, _env: Option<Env>) -> MalResult {
   let mut args = to_numbers(args)?;
   let mut result = args.remove(0);
   for i in args {
@@ -71,20 +77,11 @@ pub fn divide(args: &mut Vec<MalType>) -> MalResult {
   Ok(MalType::Number(result))
 }
 
-pub fn list(args: &mut Vec<MalType>) -> MalResult {
+pub fn list(args: &mut Vec<MalType>, _env: Option<Env>) -> MalResult {
   Ok(MalType::List(args.to_owned()))
 }
 
-fn expected_arguments(args: &mut Vec<MalType>, expected: usize) -> Result<(), MalError> {
-  if args.len() < expected {
-    let msg = format!("Wrong number of args, expected {}", expected);
-    Err(MalError::wrong_arguments(&msg))
-  } else {
-    Ok(())
-  }
-}
-
-pub fn is_list(args: &mut Vec<MalType>) -> MalResult {
+pub fn is_list(args: &mut Vec<MalType>, _env: Option<Env>) -> MalResult {
   if args.len() == 0 {
     return Ok(MalType::False);
   }
@@ -92,7 +89,7 @@ pub fn is_list(args: &mut Vec<MalType>) -> MalResult {
   Ok(MalType::to_bool(args[0].is_list()))
 }
 
-pub fn is_empty(args: &mut Vec<MalType>) -> MalResult {
+pub fn is_empty(args: &mut Vec<MalType>, _env: Option<Env>) -> MalResult {
   expected_arguments(args, 1)?;
   match args[0].list_value() {
     Some(list) => Ok(MalType::to_bool(list.len() == 0)),
@@ -100,7 +97,7 @@ pub fn is_empty(args: &mut Vec<MalType>) -> MalResult {
   }
 }
 
-pub fn count(args: &mut Vec<MalType>) -> MalResult {
+pub fn count(args: &mut Vec<MalType>, _env: Option<Env>) -> MalResult {
   expected_arguments(args, 1)?;
   if args[0].is_nil() {
     return Ok(MalType::Number(0));
@@ -111,60 +108,163 @@ pub fn count(args: &mut Vec<MalType>) -> MalResult {
   }
 }
 
-pub fn equal(args: &mut Vec<MalType>) -> MalResult {
+pub fn equal(args: &mut Vec<MalType>, _env: Option<Env>) -> MalResult {
   expected_arguments(args, 2)?;
   Ok(MalType::to_bool(values_equal(&args[0], &args[1])))
 }
 
-pub fn less_than(args: &mut Vec<MalType>) -> MalResult {
+pub fn less_than(args: &mut Vec<MalType>, _env: Option<Env>) -> MalResult {
   expected_arguments(args, 2)?;
   let first = get_number(&args[0])?;
   let second = get_number(&args[1])?;
   Ok(MalType::to_bool(first < second))
 }
 
-pub fn less_than_or_eq(args: &mut Vec<MalType>) -> MalResult {
+pub fn less_than_or_eq(args: &mut Vec<MalType>, _env: Option<Env>) -> MalResult {
   expected_arguments(args, 2)?;
   let first = get_number(&args[0])?;
   let second = get_number(&args[1])?;
   Ok(MalType::to_bool(first <= second))
 }
 
-pub fn greater_than(args: &mut Vec<MalType>) -> MalResult {
+pub fn greater_than(args: &mut Vec<MalType>, _env: Option<Env>) -> MalResult {
   expected_arguments(args, 2)?;
   let first = get_number(&args[0])?;
   let second = get_number(&args[1])?;
   Ok(MalType::to_bool(first > second))
 }
 
-pub fn greater_than_or_eq(args: &mut Vec<MalType>) -> MalResult {
+pub fn greater_than_or_eq(args: &mut Vec<MalType>, _env: Option<Env>) -> MalResult {
   expected_arguments(args, 2)?;
   let first = get_number(&args[0])?;
   let second = get_number(&args[1])?;
   Ok(MalType::to_bool(first >= second))
 }
 
-pub fn prn(args: &mut Vec<MalType>) -> MalResult {
+pub fn prn(args: &mut Vec<MalType>, _env: Option<Env>) -> MalResult {
   print(args, true)?;
   Ok(MalType::Nil)
 }
 
-pub fn println(args: &mut Vec<MalType>) -> MalResult {
+pub fn println(args: &mut Vec<MalType>, _env: Option<Env>) -> MalResult {
   print(args, false)?;
   Ok(MalType::Nil)
 }
 
-pub fn pr_str(args: &mut Vec<MalType>) -> MalResult {
+pub fn pr_str(args: &mut Vec<MalType>, _env: Option<Env>) -> MalResult {
   Ok(MalType::String(join(args, " ", true)))
 }
 
-pub fn str(args: &mut Vec<MalType>) -> MalResult {
+pub fn str(args: &mut Vec<MalType>, _env: Option<Env>) -> MalResult {
   Ok(MalType::String(join(args, "", false)))
+}
+
+pub fn read_string(args: &mut Vec<MalType>, _env: Option<Env>) -> MalResult {
+  expected_arguments(args, 1)?;
+  let arg = args.get(0).expect("Somehow lost an argument");
+  if let Some(arg) = arg.string_value() {
+    reader::read_str(arg)
+  } else {
+    Err(MalError::generic("Not a string"))
+  }
+}
+
+pub fn slurp(args: &mut Vec<MalType>, _env: Option<Env>) -> MalResult {
+  expected_arguments(args, 1)?;
+  let arg = args.get(0).expect("Somehow lost an argument");
+  if let Some(arg) = arg.string_value() {
+    match fs::read_to_string(arg) {
+      Ok(contents) => Ok(MalType::String(contents)),
+      Err(err) => Err(MalError::generic(&err.to_string())),
+    }
+  } else {
+    Err(MalError::generic("Not a string"))
+  }
+}
+
+pub fn atom(args: &mut Vec<MalType>, _env: Option<Env>) -> MalResult {
+  expected_arguments(args, 1)?;
+  let arg = args.get(0).expect("Somehow lost an argument");
+  Ok(MalType::atom(arg.to_owned()))
+}
+
+pub fn is_atom(args: &mut Vec<MalType>, _env: Option<Env>) -> MalResult {
+  expected_arguments(args, 1)?;
+  let arg = args.get(0).expect("Somehow lost an argument");
+  Ok(MalType::to_bool(arg.is_atom()))
+}
+
+pub fn deref(args: &mut Vec<MalType>, _env: Option<Env>) -> MalResult {
+  expected_arguments(args, 1)?;
+  let arg = args.get(0).expect("Somehow lost an argument");
+  match arg {
+    MalType::Atom(value) => Ok(value.borrow().to_owned()),
+    _ => Err(MalError::wrong_arguments("Not an atom")),
+  }
+}
+
+pub fn reset(args: &mut Vec<MalType>, _env: Option<Env>) -> MalResult {
+  expected_arguments(args, 2)?;
+  let atom = args.remove(0);
+  let value = args.remove(0);
+  match atom {
+    MalType::Atom(atom) => atom.replace(value.clone()),
+    _ => return Err(MalError::wrong_arguments("Not an atom")),
+  };
+  Ok(value)
+}
+
+pub fn swap(args: &mut Vec<MalType>, _env: Option<Env>) -> MalResult {
+  expected_arguments(args, 2)?;
+  let mut atom = args.remove(0);
+  let func = args.remove(0);
+  atom.swap(func, args)
+}
+
+fn eval(mut args: &mut Vec<MalType>, env: &Env) -> MalResult {
+  if let Some(MalFunc { func, .. }) = env
+    .get("eval")
+    .expect("eval not a function")
+    .function_value()
+  {
+    func(&mut args, Some(env.clone()))
+  } else {
+    Err(MalError::generic("Not a function"))
+  }
+}
+
+pub fn eval_func(func: MalType, args: &mut Vec<MalType>) -> MalResult {
+  match func {
+    MalType::Function(MalFunc { func, env, .. }) => func(args, env),
+    MalType::Lambda(MalLambda {
+      env,
+      args: binds,
+      body,
+      ..
+    }) => {
+      let binds: Vec<String> = binds
+        .into_iter()
+        .filter_map(|val| val.symbol_value())
+        .collect();
+      let inner_env = Env::new_with_bindings(Some(env), binds, args.clone());
+      eval(&mut body.clone(), &inner_env)
+    }
+    _ => Err(MalError::wrong_arguments("Not a function")),
+  }
 }
 
 // ============================================================================
 // Utilities
 // ============================================================================
+
+fn expected_arguments(args: &mut Vec<MalType>, expected: usize) -> Result<(), MalError> {
+  if args.len() < expected {
+    let msg = format!("Wrong number of args, expected {}", expected);
+    Err(MalError::wrong_arguments(&msg))
+  } else {
+    Ok(())
+  }
+}
 
 fn to_numbers(args: &mut Vec<MalType>) -> Result<Vec<i64>, MalError> {
   let mut results = Vec::new();

@@ -1,34 +1,13 @@
-use std::io::{self, Write};
-
 use mal_rust::core;
 use mal_rust::env::Env;
 use mal_rust::types::*;
 use mal_rust::{printer, reader};
+use rustyline::error::ReadlineError;
+use rustyline::Editor;
+use std::{env, process};
 
-enum ReadResult {
-  InputRecv(MalType),
-  Done,
-}
-
-enum RepResult {
-  Continue,
-  Done,
-}
-
-fn read() -> Result<ReadResult, MalError> {
-  let mut input = String::new();
-  print!("user> ");
-  io::stdout().flush().expect("Could not flush stdout");
-
-  let bytes = io::stdin()
-    .read_line(&mut input)
-    .expect("Could not read from stdin");
-  let out = if bytes != 0 {
-    ReadResult::InputRecv(reader::read_str(String::from(input.trim()))?)
-  } else {
-    ReadResult::Done
-  };
-  Ok(out)
+fn read(input: &str) -> MalResult {
+  reader::read_str(input.to_string())
 }
 
 fn eval_hash_map(list: Vec<MalType>, env: &mut Env) -> Result<Vec<MalType>, MalError> {
@@ -222,20 +201,23 @@ fn is_special_form(input: &MalType) -> bool {
   false
 }
 
-fn print(output: MalType) {
-  let out = printer::print_str(&output, true);
-  println!("{}", out);
-  io::stdout().flush().unwrap();
+fn eval_fn(args: &mut Vec<MalType>, env: Option<Env>) -> MalResult {
+  if let Some(arg) = args.get(0) {
+    let mut env = env.expect("No env provided");
+    eval(arg.to_owned(), &mut env)
+  } else {
+    Err(MalError::generic("Not enough arguments"))
+  }
 }
 
-fn rep(env: &mut Env) -> Result<RepResult, MalError> {
-  match read()? {
-    ReadResult::InputRecv(input) => {
-      print(eval(input, env)?);
-      Ok(RepResult::Continue)
-    }
-    ReadResult::Done => Ok(RepResult::Done),
-  }
+fn print(output: MalType) -> String {
+  printer::print_str(&output, true)
+}
+
+fn rep(input: String, env: &mut Env) -> Result<String, MalError> {
+  let out = read(&input)?;
+  let out = print(eval(out, env)?);
+  Ok(out)
 }
 
 fn main() {
@@ -250,19 +232,71 @@ fn main() {
       }),
     )
   }
+  env.set(
+    "eval",
+    MalType::Function(MalFunc {
+      func: eval_fn,
+      env: Some(env.clone()),
+    }),
+  );
+
+  env.set("*ARGV*", MalType::List(vec![]));
   // Eval stdlib mal functions
   let ast = reader::read_str(String::from("(def! not (fn* (a) (if a false true)))")).unwrap();
   eval(ast, &mut env).unwrap();
 
-  loop {
-    match rep(&mut env) {
-      Ok(RepResult::Continue) => (),
-      Ok(RepResult::Done) => break,
-      Err(e) => match e.reason() {
-        MalErrorReason::BlankLine => (),
-        _ => eprintln!("{}", e),
-      },
+  let ast = reader::read_str(
+    "(def! load-file (fn* (f) (eval (read-string (str \"(do \" (slurp f) \"\nnil)\")))))"
+      .to_string(),
+  )
+  .unwrap();
+  eval(ast, &mut env).unwrap();
+
+  let mut rl = Editor::<()>::new();
+  match rl.load_history(".mal-history") {
+    _ => {}
+  }
+
+  let mut args: Vec<String> = env::args().collect();
+  if args.len() > 1 {
+    args.remove(0); // Remove name of executable
+    let file = args.remove(0);
+    env.set(
+      "*ARGV*",
+      MalType::List(args.iter().map(|it| MalType::String(it.clone())).collect()),
+    );
+    let result = rep(format!("(load-file \"{}\")", file), &mut env);
+    match result {
+      Err(err) => {
+        eprintln!("{}", err);
+        process::exit(1);
+      }
+      _ => process::exit(0),
     }
   }
-  println!();
+
+  loop {
+    let readline = rl.readline("user> ");
+    match readline {
+      Ok(line) => {
+        rl.add_history_entry(line.as_str());
+        match rep(line, &mut env) {
+          Ok(out) => println!("{}", out),
+          Err(err) => match err.reason() {
+            MalErrorReason::BlankLine => (),
+            _ => eprintln!("{}", err),
+          },
+        }
+      }
+      Err(ReadlineError::Interrupted) => {
+        // Do nothing
+      }
+      Err(ReadlineError::Eof) => break,
+      Err(err) => {
+        println!("Error: {:?}", err);
+        break;
+      }
+    }
+  }
+  rl.save_history(".mal-history").unwrap();
 }
