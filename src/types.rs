@@ -82,6 +82,14 @@ impl MalType {
     }
   }
 
+  pub fn is_pair(&self) -> bool {
+    match self {
+      MalType::List(vec) => vec.len() > 0,
+      MalType::Vector(vec) => vec.len() > 0,
+      _ => false,
+    }
+  }
+
   pub fn list_value(&self) -> Option<Vec<MalType>> {
     match self {
       MalType::List(list) => Some(list.to_owned()),
@@ -123,6 +131,13 @@ impl MalType {
       MalType::True
     } else {
       MalType::False
+    }
+  }
+
+  pub fn is_symbol_named(&self, sym: &str) -> bool {
+    match self {
+      MalType::Symbol(s) => s == sym,
+      _ => false,
     }
   }
 }

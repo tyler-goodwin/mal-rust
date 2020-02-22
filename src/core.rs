@@ -44,7 +44,9 @@ lazy_static! {
       "atom?" => is_atom,
       "deref" => deref,
       "reset!" => reset,
-      "swap!" => swap
+      "swap!" => swap,
+      "cons" => cons,
+      "concat" => concat
     }
   };
 }
@@ -221,6 +223,31 @@ pub fn swap(args: &mut Vec<MalType>, _env: Option<Env>) -> MalResult {
   atom.swap(func, args)
 }
 
+pub fn cons(args: &mut Vec<MalType>, _env: Option<Env>) -> MalResult {
+  expected_arguments(args, 2)?;
+  let value = args.remove(0);
+  let list = args.remove(0);
+  if let Some(list) = list.list_value() {
+    let mut list = list.clone();
+    list.insert(0, value);
+    Ok(MalType::List(list))
+  } else {
+    Err(MalError::wrong_arguments("2nd argument was not a list"))
+  }
+}
+
+pub fn concat(args: &mut Vec<MalType>, _env: Option<Env>) -> MalResult {
+  let mut outlist = vec![];
+  for arg in args {
+    let mut list = vec_value(arg)?;
+    outlist.append(&mut list);
+  }
+  Ok(MalType::List(outlist))
+}
+
+// ============================================================================
+// Utilities
+// ============================================================================
 fn eval(mut args: &mut Vec<MalType>, env: &Env) -> MalResult {
   if let Some(MalFunc { func, .. }) = env
     .get("eval")
@@ -252,10 +279,6 @@ pub fn eval_func(func: MalType, args: &mut Vec<MalType>) -> MalResult {
     _ => Err(MalError::wrong_arguments("Not a function")),
   }
 }
-
-// ============================================================================
-// Utilities
-// ============================================================================
 
 fn expected_arguments(args: &mut Vec<MalType>, expected: usize) -> Result<(), MalError> {
   if args.len() < expected {
@@ -333,4 +356,15 @@ fn print(args: &mut Vec<MalType>, readable: bool) -> MalResult {
   let joined = join(args, " ", readable);
   println!("{}", joined);
   Ok(MalType::Nil)
+}
+
+fn vec_value(arg: &MalType) -> Result<Vec<MalType>, MalError> {
+  if let Some(v) = arg.list_value() {
+    Ok(v.clone())
+  } else {
+    Err(MalError::wrong_arguments(&format!(
+      "Expected a list or vector but got {:?}",
+      arg
+    )))
+  }
 }
